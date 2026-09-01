@@ -10,7 +10,7 @@ const SEED_CORES = [
       "입주일을 3월 15일 전후로 조율 중"
     ],
     nextAction: "부동산에 계약서 특약사항 재확인 연락하기",
-    tags: ["이사", "계약", "부동산"]
+    tags: ["이사", "계약", "부동산", "moving", "relocation", "contract", "lease"]
   },
   {
     id: "cafe-2026",
@@ -22,7 +22,7 @@ const SEED_CORES = [
       "권리금 협상 여지가 있는 매물 위주로 압축"
     ],
     nextAction: "두 번째 매물 실사 일정 잡기",
-    tags: ["창업", "카페", "임대"]
+    tags: ["창업", "카페", "임대", "cafe", "startup", "rent"]
   },
   {
     id: "jeju-2026",
@@ -34,7 +34,7 @@ const SEED_CORES = [
       "렌터카 예약 완료(중형 SUV)"
     ],
     nextAction: "3일차 맛집 리스트 정리하기",
-    tags: ["여행", "제주", "일정"]
+    tags: ["여행", "제주", "일정", "jeju", "travel", "trip"]
   },
   {
     id: "job-2026",
@@ -46,7 +46,7 @@ const SEED_CORES = [
       "추천서는 전 직장 팀장에게 요청하기로 함"
     ],
     nextAction: "포트폴리오에 최근 프로젝트 3개 요약 추가하기",
-    tags: ["이직", "이력서", "커리어"]
+    tags: ["이직", "이력서", "커리어", "job", "career", "resume", "interview"]
   }
 ];
 
