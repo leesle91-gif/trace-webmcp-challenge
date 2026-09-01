@@ -1,0 +1,10 @@
+{
+  "name": "trace-webmcp-demo",
+  "version": "0.1.0",
+  "private": false,
+  "license": "MIT",
+  "description": "Standalone WebMCP demo of TRACE's work-context-resume idea (search Core -> restore context -> confirm next action), submitted to The WebMCP Challenge.",
+  "scripts": {
+    "start": "npx --yes serve -l 4173 ."
+  }
+}

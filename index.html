@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>TRACE — WebMCP Alpha</title>
+<style>
+  :root {
+    --bg: #0f1115;
+    --panel: #171a21;
+    --border: #262a33;
+    --text: #e8e9ec;
+    --muted: #8b8f99;
+    --accent: #6ea8fe;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Pretendard", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+  }
+  header {
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--border);
+  }
+  header h1 { margin: 0 0 4px; font-size: 18px; }
+  header p { margin: 0; color: var(--muted); font-size: 13px; }
+  main {
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    min-height: calc(100vh - 76px);
+  }
+  aside {
+    border-right: 1px solid var(--border);
+    padding: 16px;
+  }
+  aside h3 { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; margin: 0 0 8px; }
+  #core-list { list-style: none; margin: 0; padding: 0; }
+  .core-item {
+    padding: 10px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin-bottom: 4px;
+  }
+  .core-item:hover { background: var(--panel); }
+  .core-item.active { background: var(--panel); outline: 1px solid var(--accent); }
+  .core-item span { font-size: 12px; color: var(--muted); }
+  section.detail { padding: 24px; max-width: 640px; }
+  .status { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 14px; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: #4ade80; display: inline-block; }
+  .next-action {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 16px;
+    font-size: 15px;
+  }
+  .muted { color: var(--muted); }
+  #agent-log-panel {
+    border-top: 1px solid var(--border);
+    padding: 16px 24px;
+    grid-column: 1 / -1;
+  }
+  #agent-log-panel h3 { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; margin: 0 0 8px; }
+  #agent-log { font-family: ui-monospace, monospace; font-size: 12px; color: var(--muted); max-height: 140px; overflow-y: auto; }
+  .agent-log-line { padding: 2px 0; }
+  button {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 6px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 12px;
+  }
+  button:hover { border-color: var(--accent); }
+</style>
+</head>
+<body>
+  <header>
+    <h1>TRACE — WebMCP Alpha</h1>
+    <p>
+      TRACE의 Core(작업 맥락 복원) 검색 로직을 실제로 재사용한 WebMCP 공개 알파입니다.
+      이 페이지의 Core 데이터는 전부 테스트용 가상 데이터이며 실제 사용자 데이터가 아닙니다.
+      WebMCP 지원 브라우저(예: ChatGPT 인앱 브라우저)에서 열면 에이전트가 이 페이지의 도구
+      (search_cores / get_core_context / confirm_next_action)를 직접 호출할 수 있습니다.
+    </p>
+  </header>
+  <main>
+    <aside>
+      <h3>Core 목록</h3>
+      <ul id="core-list"></ul>
+      <button id="reset-demo-btn" style="margin-top:12px;">데모 리셋</button>
+    </aside>
+    <section class="detail" id="core-detail"></section>
+    <div id="agent-log-panel">
+      <h3>에이전트 활동 로그 (도구 호출 시 여기 기록됨)</h3>
+      <div id="agent-log"></div>
+    </div>
+  </main>
+  <script type="module" src="app.js"></script>
+</body>
+</html>
