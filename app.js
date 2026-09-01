@@ -6,6 +6,7 @@
 //
 // search_cores 도구는 TRACE 실제 저장소(src/services/coreSearch.js)의 한국어 조사
 // 인식 검색 로직을 그대로 가져와 쓴다 — 이 파일만 재구현이 아니라 실제 TRACE 코드다.
+// 화면·도구 텍스트는 영어(심사용), Core 데이터의 검색 태그는 한국어/영어를 같이 둔다.
 
 import { loadCores, saveCores, resetCores } from "./data.js";
 import { matchesCoreSearch } from "./coreSearch.js";
@@ -37,15 +38,15 @@ function renderDetail() {
   const core = cores.find((c) => c.id === selectedId);
   const el = document.getElementById("core-detail");
   if (!core) {
-    el.innerHTML = "<p class='muted'>왼쪽에서 Core를 선택하세요.</p>";
+    el.innerHTML = "<p class='muted'>Select a Core on the left.</p>";
     return;
   }
   el.innerHTML = `
     <h2>${escapeHtml(core.name)}</h2>
     <p class="status"><span class="dot"></span>${escapeHtml(core.status)}</p>
-    <h3>확인된 결정</h3>
+    <h3>Confirmed decisions</h3>
     <ul>${core.decisions.map((d) => `<li>${escapeHtml(d)}</li>`).join("")}</ul>
-    <h3>다음 행동</h3>
+    <h3>Next action</h3>
     <p class="next-action" id="next-action-text">${escapeHtml(core.nextAction)}</p>
   `;
 }
@@ -60,7 +61,7 @@ function logAgentEvent(text) {
   const log = document.getElementById("agent-log");
   const line = document.createElement("div");
   line.className = "agent-log-line";
-  const time = new Date().toLocaleTimeString("ko-KR", { hour12: false });
+  const time = new Date().toLocaleTimeString("en-US", { hour12: false });
   line.textContent = `[${time}] ${text}`;
   log.prepend(line);
 }
@@ -70,19 +71,19 @@ function logAgentEvent(text) {
 // 등)에서만 등록한다. 없는 브라우저에서는 그냥 평범한 웹페이지로만 보인다.
 async function registerWebMcpTools() {
   if (!("modelContext" in document)) {
-    logAgentEvent("이 브라우저는 WebMCP를 지원하지 않습니다 (document.modelContext 없음).");
+    logAgentEvent("This browser does not support WebMCP (document.modelContext not found).");
     return;
   }
 
   await document.modelContext.registerTool({
     name: "search_cores",
     description:
-      "사용자가 TRACE에 남겨둔 작업(Core) 중 키워드와 관련된 것을 검색합니다. " +
-      "사용자가 예전에 하던 일을 다시 물어볼 때 먼저 이 도구로 관련 Core를 찾으세요.",
+      "Search the user's saved work items (Cores) in TRACE by keyword. " +
+      "When the user asks about something they were working on before, use this tool first to find the relevant Core.",
     inputSchema: {
       type: "object",
       properties: {
-        query: { type: "string", description: "검색어 (예: '이사', '카페', '여행')" }
+        query: { type: "string", description: "Search query (e.g. 'moving', 'cafe', 'trip')" }
       },
       required: ["query"]
     },
@@ -90,14 +91,14 @@ async function registerWebMcpTools() {
       const matches = cores.filter((c) =>
         matchesCoreSearch(query, [c.name, c.summary, c.tags])
       );
-      logAgentEvent(`에이전트가 "${query}"로 Core를 검색 → ${matches.length}건`);
+      logAgentEvent(`Agent searched Cores for "${query}" → ${matches.length} match(es)`);
       return {
         content: [
           {
             type: "text",
             text: matches.length
               ? matches.map((c) => `- ${c.id}: ${c.name} — ${c.summary}`).join("\n")
-              : "관련 Core를 찾지 못했습니다."
+              : "No matching Core found."
           }
         ]
       };
@@ -107,32 +108,32 @@ async function registerWebMcpTools() {
   await document.modelContext.registerTool({
     name: "get_core_context",
     description:
-      "특정 Core의 현재 상태, 지금까지 확인된 결정, 다음 행동을 불러옵니다. " +
-      "search_cores로 찾은 core_id를 넣어 호출하세요. 사용자가 '어디까지 했었지' 라고 " +
-      "물어볼 때 이 도구로 실제 근거를 확인한 뒤 답하세요.",
+      "Load a specific Core's current status, confirmed decisions, and next action. " +
+      "Call with a core_id found via search_cores. When the user asks 'where did I leave off', " +
+      "use this tool to check the actual saved state before answering.",
     inputSchema: {
       type: "object",
       properties: {
-        core_id: { type: "string", description: "search_cores 결과의 Core id" }
+        core_id: { type: "string", description: "Core id returned by search_cores" }
       },
       required: ["core_id"]
     },
     async execute({ core_id }) {
       const core = cores.find((c) => c.id === core_id);
       if (!core) {
-        return { content: [{ type: "text", text: `core_id "${core_id}"를 찾을 수 없습니다.` }] };
+        return { content: [{ type: "text", text: `Could not find core_id "${core_id}".` }] };
       }
       selectedId = core.id;
       render();
-      logAgentEvent(`에이전트가 "${core.name}" 맥락을 조회함`);
+      logAgentEvent(`Agent loaded context for "${core.name}"`);
       return {
         content: [
           {
             type: "text",
             text:
-              `이름: ${core.name}\n상태: ${core.status}\n` +
-              `결정:\n${core.decisions.map((d) => "- " + d).join("\n")}\n` +
-              `현재 다음 행동: ${core.nextAction}`
+              `Name: ${core.name}\nStatus: ${core.status}\n` +
+              `Decisions:\n${core.decisions.map((d) => "- " + d).join("\n")}\n` +
+              `Current next action: ${core.nextAction}`
           }
         ]
       };
@@ -142,34 +143,34 @@ async function registerWebMcpTools() {
   await document.modelContext.registerTool({
     name: "confirm_next_action",
     description:
-      "사용자가 확인/승인한 다음 행동을 해당 Core에 반영합니다. " +
-      "TRACE 원칙상 에이전트가 임의로 다음 행동을 정하지 않습니다 — 반드시 사용자에게 " +
-      "먼저 제안하고, 사용자가 승인한 내용만 이 도구로 반영하세요.",
+      "Reflect a user-approved next action onto a Core. " +
+      "TRACE's principle: the agent never decides the next action on its own — always propose it " +
+      "to the user first, and only call this tool with what the user has approved.",
     inputSchema: {
       type: "object",
       properties: {
-        core_id: { type: "string", description: "대상 Core id" },
-        next_action: { type: "string", description: "사용자가 승인한 다음 행동 문구" }
+        core_id: { type: "string", description: "Target Core id" },
+        next_action: { type: "string", description: "The next-action text the user approved" }
       },
       required: ["core_id", "next_action"]
     },
     async execute({ core_id, next_action }) {
       const core = cores.find((c) => c.id === core_id);
       if (!core) {
-        return { content: [{ type: "text", text: `core_id "${core_id}"를 찾을 수 없습니다.` }] };
+        return { content: [{ type: "text", text: `Could not find core_id "${core_id}".` }] };
       }
       core.nextAction = String(next_action);
       saveCores(cores);
       selectedId = core.id;
       render();
-      logAgentEvent(`에이전트가 "${core.name}"의 다음 행동을 갱신함 → "${next_action}"`);
+      logAgentEvent(`Agent updated the next action for "${core.name}" → "${next_action}"`);
       return {
-        content: [{ type: "text", text: `"${core.name}"의 다음 행동을 반영했습니다: ${next_action}` }]
+        content: [{ type: "text", text: `Updated next action for "${core.name}": ${next_action}` }]
       };
     }
   });
 
-  logAgentEvent("WebMCP 도구 3개 등록 완료 (search_cores, get_core_context, confirm_next_action)");
+  logAgentEvent("Registered 3 WebMCP tools (search_cores, get_core_context, confirm_next_action)");
 }
 
 document.getElementById("reset-demo-btn").addEventListener("click", () => {
@@ -177,7 +178,7 @@ document.getElementById("reset-demo-btn").addEventListener("click", () => {
   cores = loadCores();
   selectedId = cores[0]?.id ?? null;
   render();
-  logAgentEvent("데모 데이터를 초기 상태로 리셋함");
+  logAgentEvent("Demo data reset to initial state");
 });
 
 render();

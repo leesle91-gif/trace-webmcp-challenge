@@ -1,67 +1,76 @@
 # TRACE — WebMCP Alpha
 
-TRACE는 사용자가 하던 작업(Core)의 맥락 — 지금 상태, 확인된 결정, 다음 행동 — 을 저장해두고
-나중에 다시 설명하지 않아도 이어갈 수 있게 하는 Work Memory 앱입니다.
+TRACE is a Work Memory app: it saves the context of a task (Core) a user was working on
+— its current status, confirmed decisions, and next action — so the user can pick it back
+up later without re-explaining everything.
 
-이 저장소는 [The WebMCP Challenge](https://webmcp.devpost.com/) 제출을 위한 **공개 알파**입니다.
-TRACE의 실제 검색 로직(`coreSearch.js`)을 그대로 가져와, 웹페이지 자체가
-[WebMCP](https://github.com/webmachinelearning/webmcp) 표준으로 에이전트에게 도구를
-직접 노출하도록 만들었습니다 — 별도 서버나 API 키 연동 없이, 페이지 안의
-`document.modelContext.registerTool()` 호출만으로 동작합니다.
+This repository is a **public alpha** submitted to
+[The WebMCP Challenge](https://webmcp.devpost.com/). It reuses TRACE's real Core search
+logic (`coreSearch.js`) and exposes it directly to agents via the
+[WebMCP](https://github.com/webmachinelearning/webmcp) standard — no server or API key
+required, just `document.modelContext.registerTool()` calls inside the page.
 
-## 이 저장소가 아닌 것
+## What this repository is not
 
-- TRACE의 운영(상용) 서비스 코드가 아닙니다. 실제 TRACE는 별도 비공개 저장소에서 운영됩니다.
-- 여기 담긴 Core 데이터는 전부 **가상의 테스트 데이터**입니다. 실제 사용자 데이터, 실제 계정,
-  운영 DB는 전혀 사용하지 않습니다.
-- 결제, 인증, 데스크톱 앱, 내부 운영 문서 등 이번 제출과 무관한 코드는 포함하지 않았습니다.
+- Not TRACE's production service code. The real TRACE app runs from a separate private
+  repository.
+- The Core data here is **entirely fictional test data**. No real user data, real accounts,
+  or production database is used anywhere in this project.
+- Payment, auth, desktop app, and internal operations code are intentionally excluded —
+  they're unrelated to this submission.
 
-## 시나리오
+## Scenario
 
-1. 사용자가 "이사 계약서 준비하던 것 이어서 해줘"라고 말함
-2. 에이전트가 `search_cores`로 관련 Core를 찾음
-3. `get_core_context`로 저장된 결정·현재 상태·다음 행동을 복원함
-4. 에이전트가 다음 행동을 제안하고, 사용자가 확인하면 `confirm_next_action`으로 반영함
+1. The user says: "Continue what I was doing about the moving contract / cafe rental."
+2. The agent calls `search_cores` to find the relevant Core.
+3. The agent calls `get_core_context` to restore the saved decisions, current status, and
+   next action.
+4. The agent proposes a next action; once the user approves it, the agent calls
+   `confirm_next_action` to reflect it.
 
-에이전트가 임의로 다음 행동을 정하지 않고, 사용자 확인을 거친 것만 반영한다는 TRACE의
-원래 제품 원칙을 그대로 따릅니다.
+This follows TRACE's original product principle: the agent never decides the next action
+on its own — only what the user has confirmed gets written.
 
-## 포함된 것 / 재사용된 실제 TRACE 코드
+## What's included / real TRACE code reused
 
-- `coreSearch.js` — TRACE 실제 저장소 `src/services/coreSearch.js`를 그대로 가져온 파일입니다
-  (SHA-256 동일, 재구현 아님). 대화체 잡음 표현("아", "그거", "찾아줘" 등)을 걸러내고 일부
-  활용형을 별칭으로 정규화하는 실제 검색 매칭 로직입니다. 조사(-을/를/이/가 등)를 형태소
-  분석으로 제거하지는 않으므로, 검색어에 조사가 그대로 붙어 있으면(예: "계약서를") 저장된
-  단어("계약서")와 다른 문자열로 취급되어 매칭되지 않을 수 있습니다 — 조사 없는 핵심 단어
-  단위로 검색할 때 가장 잘 동작합니다.
-- `data.js` — 가상 데모 Core 4개(테스트 데이터)와 로컬 저장(localStorage) 헬퍼.
-- `app.js` — 화면 렌더링 + WebMCP 도구 3개 등록(`search_cores`, `get_core_context`,
-  `confirm_next_action`).
-- `index.html` — 페이지 뼈대.
+- `coreSearch.js` — copied unchanged from the real TRACE repository
+  (`src/services/coreSearch.js`), byte-identical (SHA-256 match, not a reimplementation).
+  It's TRACE's actual Korean-aware search matching logic: it filters out conversational
+  filler words ("아", "그거", "찾아줘", etc.) and normalizes a small set of inflected forms
+  via an alias map. It does **not** strip Korean particles (조사, e.g. -을/를/이/가) through
+  morphological analysis, so a query with a particle still attached (e.g. "계약서를") is
+  treated as a different string from the stored word ("계약서") and may not match — it works
+  best when searching with the bare keyword.
+- `data.js` — 4 fictional demo Cores (test data) plus `localStorage` persistence helpers.
+- `app.js` — page rendering plus registration of the 3 WebMCP tools (`search_cores`,
+  `get_core_context`, `confirm_next_action`).
+- `index.html` — page shell.
 
-## 설치 및 실행 방법
+## Install & run
 
-백엔드, 데이터베이스, 환경변수, 로그인이 전혀 필요 없습니다. 정적 파일만으로 동작합니다.
+No backend, database, environment variables, or login required. It's a static site.
 
 ```bash
 npm start
-# 또는
+# or
 npx serve .
 ```
 
-브라우저에서 `http://localhost:4173`(또는 표시된 주소)을 엽니다.
+Open `http://localhost:4173` (or whatever address is printed) in a browser.
 
-## WebMCP 테스트 방법
+## How to test WebMCP
 
-- **일반 브라우저**: 그냥 페이지만 정상적으로 뜹니다(에이전트 도구 없이 사람이 클릭하는 용도).
-  브라우저가 `document.modelContext`를 지원하지 않으면 하단 "에이전트 활동 로그"에 안내 문구가 뜹니다.
-- **WebMCP 지원 브라우저 / ChatGPT 인앱 브라우저**: 페이지 로드 시 도구 3개가 자동 등록되고,
-  에이전트가 도구를 호출하면 화면(Core 목록, 상세, 다음 행동)이 실시간으로 같이 바뀝니다.
-- 개발자 콘솔에서 직접 확인하려면:
+- **Regular browser**: the page just renders normally (for a human to click through,
+  without agent tools). If the browser doesn't support `document.modelContext`, the
+  "Agent activity log" panel at the bottom shows a notice saying so.
+- **WebMCP-enabled browser / ChatGPT in-app browser**: on page load, the 3 tools register
+  automatically. When an agent calls a tool, the page (Core list, detail, next action)
+  updates live in the same view.
+- To check directly from the developer console:
   ```js
   document.modelContext.getTools()
   ```
 
-## 라이선스
+## License
 
 [MIT](./LICENSE)

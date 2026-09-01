@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="ko">
+<html lang="en">
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -84,21 +84,21 @@
   <header>
     <h1>TRACE — WebMCP Alpha</h1>
     <p>
-      TRACE의 Core(작업 맥락 복원) 검색 로직을 실제로 재사용한 WebMCP 공개 알파입니다.
-      이 페이지의 Core 데이터는 전부 테스트용 가상 데이터이며 실제 사용자 데이터가 아닙니다.
-      WebMCP 지원 브라우저(예: ChatGPT 인앱 브라우저)에서 열면 에이전트가 이 페이지의 도구
-      (search_cores / get_core_context / confirm_next_action)를 직접 호출할 수 있습니다.
+      A WebMCP public alpha that reuses TRACE's real Core (work-context-resume) search logic.
+      All Core data on this page is fictional test data, not real user data.
+      Open this page in a WebMCP-enabled browser (e.g. the ChatGPT in-app browser) and an agent
+      can call this page's tools directly: search_cores / get_core_context / confirm_next_action.
     </p>
   </header>
   <main>
     <aside>
-      <h3>Core 목록</h3>
+      <h3>Cores</h3>
       <ul id="core-list"></ul>
-      <button id="reset-demo-btn" style="margin-top:12px;">데모 리셋</button>
+      <button id="reset-demo-btn" style="margin-top:12px;">Reset demo</button>
     </aside>
     <section class="detail" id="core-detail"></section>
     <div id="agent-log-panel">
-      <h3>에이전트 활동 로그 (도구 호출 시 여기 기록됨)</h3>
+      <h3>Agent activity log (tool calls appear here)</h3>
       <div id="agent-log"></div>
     </div>
   </main>
