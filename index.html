@@ -3,102 +3,290 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>TRACE — WebMCP Alpha</title>
+<title>TRACE — Context Recovery via WebMCP</title>
 <style>
   :root {
-    --bg: #0f1115;
-    --panel: #171a21;
-    --border: #262a33;
-    --text: #e8e9ec;
-    --muted: #8b8f99;
-    --accent: #6ea8fe;
+    --bg: #0c0f14;
+    --panel: #151922;
+    --panel-soft: #11151c;
+    --border: #272d38;
+    --text: #f0f2f5;
+    --muted: #949ba8;
+    --accent: #7aa7ff;
+    --accent-soft: rgba(122, 167, 255, 0.12);
+    --green: #4ade80;
+    --green-soft: rgba(74, 222, 128, 0.11);
+    --amber: #f6c56f;
   }
   * { box-sizing: border-box; }
+  html { color-scheme: dark; }
   body {
     margin: 0;
-    font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Pretendard", sans-serif;
+    font-family: Inter, -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Pretendard", sans-serif;
     background: var(--bg);
     color: var(--text);
   }
   header {
-    padding: 20px 24px;
+    min-height: 84px;
+    padding: 17px 22px;
     border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+    background: rgba(12, 15, 20, 0.92);
   }
-  header h1 { margin: 0 0 4px; font-size: 18px; }
-  header p { margin: 0; color: var(--muted); font-size: 13px; }
+  .brand h1 { margin: 0 0 5px; font-size: 18px; letter-spacing: -0.01em; }
+  .brand p { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.45; max-width: 760px; }
+  .header-badges { display: flex; gap: 7px; flex-shrink: 0; }
+  .header-badges span, .local-badge {
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 5px 9px;
+    color: var(--muted);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+  .header-badges .tool-badge { color: var(--accent); border-color: rgba(122, 167, 255, 0.38); }
   main {
     display: grid;
-    grid-template-columns: 280px 1fr;
-    min-height: calc(100vh - 76px);
+    grid-template-columns: 220px minmax(580px, 1fr) 300px;
+    min-height: calc(100vh - 84px);
   }
   aside {
     border-right: 1px solid var(--border);
-    padding: 16px;
+    padding: 18px 14px;
+    background: var(--panel-soft);
   }
-  aside h3 { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; margin: 0 0 8px; }
+  aside h3, #agent-log-panel h3 {
+    font-size: 10px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin: 0 0 10px;
+  }
+  .aside-copy { margin: 0 0 15px; color: var(--muted); font-size: 11px; line-height: 1.45; }
   #core-list { list-style: none; margin: 0; padding: 0; }
   .core-item {
-    padding: 10px 12px;
-    border-radius: 8px;
+    padding: 11px;
+    border-radius: 9px;
     cursor: pointer;
     display: flex;
     flex-direction: column;
-    gap: 2px;
-    margin-bottom: 4px;
+    gap: 4px;
+    margin-bottom: 6px;
+    border: 1px solid transparent;
+    transition: border-color 120ms ease, background 120ms ease;
   }
   .core-item:hover { background: var(--panel); }
-  .core-item.active { background: var(--panel); outline: 1px solid var(--accent); }
-  .core-item span { font-size: 12px; color: var(--muted); }
-  section.detail { padding: 24px; max-width: 640px; }
-  .status { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 14px; }
-  .dot { width: 8px; height: 8px; border-radius: 50%; background: #4ade80; display: inline-block; }
-  .next-action {
-    background: var(--panel);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 14px 16px;
-    font-size: 15px;
-  }
-  .muted { color: var(--muted); }
-  #agent-log-panel {
-    border-top: 1px solid var(--border);
-    padding: 16px 24px;
-    grid-column: 1 / -1;
-  }
-  #agent-log-panel h3 { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; margin: 0 0 8px; }
-  #agent-log { font-family: ui-monospace, monospace; font-size: 12px; color: var(--muted); max-height: 140px; overflow-y: auto; }
-  .agent-log-line { padding: 2px 0; }
+  .core-item.active { background: var(--accent-soft); border-color: rgba(122, 167, 255, 0.52); }
+  .core-item strong { font-size: 13px; }
+  .core-item span { font-size: 11px; color: var(--muted); line-height: 1.35; }
+  .core-item small { font-size: 9px; color: var(--accent); margin-top: 2px; text-transform: uppercase; letter-spacing: 0.05em; }
   button {
+    width: 100%;
     background: var(--panel);
     border: 1px solid var(--border);
     color: var(--text);
-    padding: 6px 12px;
-    border-radius: 6px;
+    padding: 8px 11px;
+    border-radius: 7px;
     cursor: pointer;
-    font-size: 12px;
+    font-size: 11px;
   }
   button:hover { border-color: var(--accent); }
+  section.detail {
+    padding: 22px;
+    min-width: 0;
+    max-width: 1100px;
+    width: 100%;
+    margin: 0 auto;
+  }
+  .detail-heading, .section-heading {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+  }
+  .detail-heading { align-items: center; margin-bottom: 15px; }
+  .detail-heading h2 { margin: 1px 0 0; font-size: 24px; letter-spacing: -0.03em; }
+  .eyebrow, .section-label {
+    margin: 0;
+    color: var(--accent);
+    font-size: 9px;
+    font-weight: 750;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+  .local-badge { color: var(--green); border-color: rgba(74, 222, 128, 0.35); }
+  .current-state {
+    background: linear-gradient(135deg, var(--accent-soft), rgba(122, 167, 255, 0.035));
+    border: 1px solid rgba(122, 167, 255, 0.3);
+    border-radius: 11px;
+    padding: 13px 15px;
+    margin-bottom: 20px;
+  }
+  .status { display: flex; align-items: center; gap: 8px; margin: 7px 0 0; font-size: 13px; line-height: 1.45; }
+  .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); display: inline-block; flex: 0 0 auto; }
+  .detail-section { margin-top: 0; }
+  .section-heading { align-items: end; margin-bottom: 10px; }
+  .section-heading.compact { align-items: start; }
+  .detail-section h3 { margin: 3px 0 0; font-size: 15px; letter-spacing: -0.01em; }
+  .section-count {
+    color: var(--muted);
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 4px 7px;
+  }
+  .context-trail {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+    position: relative;
+  }
+  .context-card {
+    min-width: 0;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+    background: var(--panel);
+  }
+  .context-image-wrap { position: relative; aspect-ratio: 4 / 2.5; overflow: hidden; background: #090b0f; }
+  .context-image { width: 100%; height: 100%; display: block; object-fit: cover; }
+  .record-order {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    display: grid;
+    place-items: center;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: rgba(9, 12, 17, 0.86);
+    border: 1px solid rgba(255,255,255,0.3);
+    font-size: 10px;
+    font-weight: 800;
+  }
+  .fictional-badge {
+    position: absolute;
+    right: 7px;
+    bottom: 7px;
+    color: #f7f8fb;
+    background: rgba(9, 12, 17, 0.8);
+    border-radius: 4px;
+    padding: 3px 5px;
+    font-size: 7px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  .context-card-body { padding: 10px 11px 12px; }
+  .record-meta { display: flex; justify-content: space-between; gap: 8px; color: var(--accent); font-size: 8px; text-transform: uppercase; letter-spacing: 0.04em; }
+  .record-meta time { color: var(--muted); }
+  .context-card h4 { margin: 7px 0 4px; font-size: 12px; }
+  .context-card p { margin: 0; color: var(--muted); font-size: 10px; line-height: 1.42; }
+  .outcome-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
+    gap: 10px;
+    margin-top: 14px;
+  }
+  .decision-panel, .next-panel {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 13px 14px;
+    background: var(--panel-soft);
+  }
+  .decision-list { margin: 9px 0 0; padding-left: 17px; color: var(--muted); font-size: 11px; line-height: 1.45; }
+  .decision-list li + li { margin-top: 5px; }
+  .next-steps { list-style: none; margin: 10px 0 0; padding: 0; counter-reset: steps; }
+  .next-steps li {
+    display: flex;
+    gap: 9px;
+    padding: 8px 0;
+    border-top: 1px solid var(--border);
+    font-size: 11px;
+    line-height: 1.4;
+  }
+  .next-steps li:first-child { border-top: 0; padding-top: 0; }
+  .step-marker { width: 13px; height: 13px; border-radius: 50%; border: 1.5px solid var(--accent); margin-top: 1px; flex: 0 0 auto; }
+  .step-text { display: block; }
+  .approved-label {
+    display: inline-block;
+    margin-top: 4px;
+    color: var(--green);
+    background: var(--green-soft);
+    border-radius: 4px;
+    padding: 2px 5px;
+    font-size: 8px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .muted { color: var(--muted); }
+  .empty-state { font-size: 11px; border: 1px dashed var(--border); border-radius: 8px; padding: 13px; }
+  #agent-log-panel {
+    min-width: 0;
+    border-left: 1px solid var(--border);
+    padding: 18px 15px;
+    background: var(--panel-soft);
+  }
+  .log-intro { margin: -4px 0 12px; color: var(--muted); font-size: 10px; line-height: 1.45; }
+  #agent-log {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 10px;
+    color: var(--muted);
+    max-height: calc(100vh - 190px);
+    overflow-y: auto;
+  }
+  .agent-log-line { padding: 7px 0; border-top: 1px solid var(--border); line-height: 1.5; overflow-wrap: anywhere; }
+  .agent-log-line:first-child { color: var(--text); }
+  @media (max-width: 1120px) {
+    main { grid-template-columns: 210px minmax(0, 1fr); }
+    #agent-log-panel { grid-column: 1 / -1; border-left: 0; border-top: 1px solid var(--border); }
+    #agent-log { max-height: 130px; }
+  }
+  @media (max-width: 760px) {
+    header { align-items: flex-start; flex-direction: column; gap: 10px; }
+    main { display: block; }
+    aside { border-right: 0; border-bottom: 1px solid var(--border); }
+    .context-trail, .outcome-grid { grid-template-columns: 1fr; }
+    section.detail { padding: 18px 14px; }
+    .header-badges { flex-wrap: wrap; }
+  }
 </style>
 </head>
 <body>
   <header>
-    <h1>TRACE — WebMCP Alpha</h1>
-    <p>
-      A WebMCP public alpha that reuses TRACE's real Core (work-context-resume) search logic.
-      All Core data on this page is fictional test data, not real user data.
-      Open this page in a WebMCP-enabled browser (e.g. the ChatGPT in-app browser) and an agent
-      can call this page's tools directly: search_cores / get_core_context / confirm_next_action.
-    </p>
+    <div class="brand">
+      <h1>TRACE — Context Recovery via WebMCP</h1>
+      <p>
+        A public challenge demo where an agent discovers earlier evidence, restores the current
+        state, and appends only a user-approved next step. All people, properties, records, and
+        images are fictional; state is stored only in this browser.
+      </p>
+    </div>
+    <div class="header-badges" aria-label="Demo properties">
+      <span class="tool-badge">3 site tools</span>
+      <span>Fictional data</span>
+      <span>Local only</span>
+    </div>
   </header>
   <main>
     <aside>
-      <h3>Cores</h3>
+      <h3>Saved Cores</h3>
+      <p class="aside-copy">Choose a work context. The Cafe Launch Core demonstrates accumulated evidence and next steps.</p>
       <ul id="core-list"></ul>
-      <button id="reset-demo-btn" style="margin-top:12px;">Reset demo</button>
+      <button id="reset-demo-btn" type="button" style="margin-top:10px;">Reset demo state</button>
     </aside>
     <section class="detail" id="core-detail"></section>
     <div id="agent-log-panel">
-      <h3>Agent activity log (tool calls appear here)</h3>
+      <h3>Agent activity</h3>
+      <p class="log-intro">Calls to the page's WebMCP site tools appear here. This log is not a production TRACE audit log.</p>
       <div id="agent-log"></div>
     </div>
   </main>

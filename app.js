@@ -1,18 +1,36 @@
-// TRACE — WebMCP Alpha
-// 사람이 화면으로 보는 렌더링 + 에이전트가 쓰는 WebMCP 도구 등록을 같은 상태(state)에
-// 대해 같이 동작하게 한다. 에이전트가 도구를 호출해 상태를 바꾸면 화면도 즉시 같이
-// 바뀐다 — "AI가 대신 결정하지 않고, 사용자가 보는 화면 위에서 확인 가능한 형태로
-// 다음 행동을 남긴다"는 TRACE 원칙을 그대로 보여주기 위함.
+// TRACE — WebMCP Challenge demo
+// Human-facing rendering and agent-facing WebMCP tools operate on the same
+// fictional local state. Agent writes are allowed only after user approval.
 //
-// search_cores 도구는 TRACE 실제 저장소(src/services/coreSearch.js)의 한국어 조사
-// 인식 검색 로직을 그대로 가져와 쓴다 — 이 파일만 재구현이 아니라 실제 TRACE 코드다.
-// 화면·도구 텍스트는 영어(심사용), Core 데이터의 검색 태그는 한국어/영어를 같이 둔다.
+// search_cores imports TRACE's byte-identical production search module.
+// The context trail is a challenge-demo representation of accumulated
+// captures/log notes; it is not a claim that production TRACE stores a graph.
 
 import { loadCores, saveCores, resetCores } from "./data.js";
 import { matchesCoreSearch } from "./coreSearch.js";
 
 let cores = loadCores();
-let selectedId = cores[0]?.id ?? null;
+let selectedId = cores.find((core) => core.id === "cafe-2026")?.id ?? cores[0]?.id ?? null;
+
+function escapeHtml(value) {
+  const div = document.createElement("div");
+  div.textContent = String(value ?? "");
+  return div.innerHTML;
+}
+
+function formatDate(value) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value ?? "");
+  return date.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric"
+  });
+}
+
+function getOpenNextSteps(core) {
+  return Array.isArray(core.nextSteps) ? core.nextSteps.filter((step) => !step.done) : [];
+}
 
 function render() {
   renderList();
@@ -25,7 +43,10 @@ function renderList() {
   cores.forEach((core) => {
     const li = document.createElement("li");
     li.className = "core-item" + (core.id === selectedId ? " active" : "");
-    li.innerHTML = `<strong>${escapeHtml(core.name)}</strong><span>${escapeHtml(core.summary)}</span>`;
+    li.innerHTML =
+      "<strong>" + escapeHtml(core.name) + "</strong>" +
+      "<span>" + escapeHtml(core.summary) + "</span>" +
+      "<small>" + getOpenNextSteps(core).length + " open next step(s)</small>";
     li.addEventListener("click", () => {
       selectedId = core.id;
       render();
@@ -34,27 +55,97 @@ function renderList() {
   });
 }
 
-function renderDetail() {
-  const core = cores.find((c) => c.id === selectedId);
-  const el = document.getElementById("core-detail");
-  if (!core) {
-    el.innerHTML = "<p class='muted'>Select a Core on the left.</p>";
-    return;
+function renderContextTrail(records) {
+  if (!records?.length) {
+    return "<p class='muted empty-state'>No context records in this compact demo Core.</p>";
   }
-  el.innerHTML = `
-    <h2>${escapeHtml(core.name)}</h2>
-    <p class="status"><span class="dot"></span>${escapeHtml(core.status)}</p>
-    <h3>Confirmed decisions</h3>
-    <ul>${core.decisions.map((d) => `<li>${escapeHtml(d)}</li>`).join("")}</ul>
-    <h3>Next action</h3>
-    <p class="next-action" id="next-action-text">${escapeHtml(core.nextAction)}</p>
-  `;
+  const chronological = [...records].sort(
+    (a, b) => new Date(a.capturedAt) - new Date(b.capturedAt)
+  );
+  return (
+    '<div class="context-trail">' +
+    chronological.map((record, index) =>
+      '<article class="context-card">' +
+        '<div class="context-image-wrap">' +
+          '<img src="' + escapeHtml(record.image) + '" alt="' +
+            escapeHtml(record.imageAlt) + '" class="context-image" />' +
+          '<span class="record-order">' + (index + 1) + "</span>" +
+          '<span class="fictional-badge">Fictional demo capture</span>' +
+        "</div>" +
+        '<div class="context-card-body">' +
+          '<div class="record-meta"><span>' + escapeHtml(record.kind) + "</span>" +
+            '<time datetime="' + escapeHtml(record.capturedAt) + '">' +
+              escapeHtml(formatDate(record.capturedAt)) + "</time></div>" +
+          "<h4>" + escapeHtml(record.title) + "</h4>" +
+          "<p>" + escapeHtml(record.note) + "</p>" +
+        "</div>" +
+      "</article>"
+    ).join("") +
+    "</div>"
+  );
 }
 
-function escapeHtml(s) {
-  const div = document.createElement("div");
-  div.textContent = String(s ?? "");
-  return div.innerHTML;
+function renderNextSteps(core) {
+  const steps = getOpenNextSteps(core);
+  if (!steps.length) {
+    return "<p class='muted empty-state'>No open next steps.</p>";
+  }
+  return (
+    '<ol class="next-steps">' +
+    steps.map((step) =>
+      "<li>" +
+        '<span class="step-marker" aria-hidden="true"></span>' +
+        "<div>" +
+          '<span class="step-text">' + escapeHtml(step.text) + "</span>" +
+          (step.source === "user-approved"
+            ? '<small class="approved-label">User-approved</small>'
+            : "") +
+        "</div>" +
+      "</li>"
+    ).join("") +
+    "</ol>"
+  );
+}
+
+function renderDetail() {
+  const core = cores.find((candidate) => candidate.id === selectedId);
+  const element = document.getElementById("core-detail");
+  if (!core) {
+    element.innerHTML = "<p class='muted'>Select a Core on the left.</p>";
+    return;
+  }
+
+  element.innerHTML =
+    '<div class="detail-heading"><div>' +
+      '<p class="eyebrow">Saved work context</p>' +
+      "<h2>" + escapeHtml(core.name) + "</h2>" +
+    '</div><span class="local-badge">Local demo state</span></div>' +
+    '<section class="current-state">' +
+      '<p class="section-label">Current state</p>' +
+      '<p class="status"><span class="dot"></span>' + escapeHtml(core.status) + "</p>" +
+    "</section>" +
+    '<section class="detail-section">' +
+      '<div class="section-heading"><div>' +
+        '<p class="section-label">Earlier evidence</p><h3>Context trail</h3>' +
+      '</div><span class="section-count">' + (core.contextRecords?.length ?? 0) +
+        " records</span></div>" +
+      renderContextTrail(core.contextRecords) +
+    "</section>" +
+    '<div class="outcome-grid">' +
+      '<section class="detail-section decision-panel">' +
+        '<p class="section-label">What was confirmed</p><h3>Decisions</h3>' +
+        '<ul class="decision-list">' +
+          core.decisions.map((decision) => "<li>" + escapeHtml(decision) + "</li>").join("") +
+        "</ul>" +
+      "</section>" +
+      '<section class="detail-section next-panel">' +
+        '<div class="section-heading compact"><div>' +
+          '<p class="section-label">What remains</p><h3>Next steps</h3>' +
+        '</div><span class="section-count">' + getOpenNextSteps(core).length +
+          " open</span></div>" +
+        renderNextSteps(core) +
+      "</section>" +
+    "</div>";
 }
 
 function logAgentEvent(text) {
@@ -62,13 +153,49 @@ function logAgentEvent(text) {
   const line = document.createElement("div");
   line.className = "agent-log-line";
   const time = new Date().toLocaleTimeString("en-US", { hour12: false });
-  line.textContent = `[${time}] ${text}`;
+  line.textContent = "[" + time + "] " + text;
   log.prepend(line);
 }
 
-// ─── WebMCP 도구 등록 ─────────────────────────────────────────────
-// document.modelContext가 있는 브라우저(WebMCP 활성화 Chrome, ChatGPT 인앱 브라우저
-// 등)에서만 등록한다. 없는 브라우저에서는 그냥 평범한 웹페이지로만 보인다.
+function normalizeActionText(value) {
+  return String(value ?? "")
+    .trim()
+    .toLocaleLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu, " ")
+    .replace(/\s+/g, " ");
+}
+
+function actionsAreSimilar(first, second) {
+  const a = normalizeActionText(first);
+  const b = normalizeActionText(second);
+  if (!a || !b) return false;
+  if (a === b) return true;
+  const aTokens = new Set(a.split(" "));
+  const bTokens = new Set(b.split(" "));
+  const intersection = [...aTokens].filter((token) => bTokens.has(token)).length;
+  const union = new Set([...aTokens, ...bTokens]).size;
+  return union > 0 && intersection / union >= 0.8;
+}
+
+function makeStepId(coreId) {
+  if (globalThis.crypto?.randomUUID) return coreId + "-" + crypto.randomUUID();
+  return coreId + "-" + Date.now();
+}
+
+function contextRecordsForTool(core) {
+  if (!core.contextRecords?.length) {
+    return "- No context records in this compact demo Core.";
+  }
+  return [...core.contextRecords]
+    .sort((a, b) => new Date(a.capturedAt) - new Date(b.capturedAt))
+    .map((record) =>
+      "- " + formatDate(record.capturedAt) + " [" + record.kind + "] " +
+      record.title + ": " + record.note +
+      " (fictional attachment: " + record.image + ")"
+    )
+    .join("\n");
+}
+
 async function registerWebMcpTools() {
   if (!("modelContext" in document)) {
     logAgentEvent("This browser does not support WebMCP (document.modelContext not found).");
@@ -88,19 +215,19 @@ async function registerWebMcpTools() {
       required: ["query"]
     },
     async execute({ query }) {
-      const matches = cores.filter((c) =>
-        matchesCoreSearch(query, [c.name, c.summary, c.tags])
+      const matches = cores.filter((core) =>
+        matchesCoreSearch(query, [core.name, core.summary, core.tags])
       );
-      logAgentEvent(`Agent searched Cores for "${query}" → ${matches.length} match(es)`);
+      logAgentEvent('Agent searched Cores for "' + query + '" → ' + matches.length + " match(es)");
       return {
-        content: [
-          {
-            type: "text",
-            text: matches.length
-              ? matches.map((c) => `- ${c.id}: ${c.name} — ${c.summary}`).join("\n")
-              : "No matching Core found."
-          }
-        ]
+        content: [{
+          type: "text",
+          text: matches.length
+            ? matches.map((core) =>
+                "- " + core.id + ": " + core.name + " — " + core.summary
+              ).join("\n")
+            : "No matching Core found."
+        }]
       };
     }
   });
@@ -108,9 +235,9 @@ async function registerWebMcpTools() {
   await document.modelContext.registerTool({
     name: "get_core_context",
     description:
-      "Load a specific Core's current status, confirmed decisions, and next action. " +
-      "Call with a core_id found via search_cores. When the user asks 'where did I leave off', " +
-      "use this tool to check the actual saved state before answering.",
+      "Load a specific Core's saved chronological context records, current state, confirmed decisions, " +
+      "and open next steps. Call with a core_id found via search_cores. When the user asks where they " +
+      "left off, use this tool to check the actual saved demo state before answering.",
     inputSchema: {
       type: "object",
       properties: {
@@ -119,23 +246,25 @@ async function registerWebMcpTools() {
       required: ["core_id"]
     },
     async execute({ core_id }) {
-      const core = cores.find((c) => c.id === core_id);
+      const core = cores.find((candidate) => candidate.id === core_id);
       if (!core) {
-        return { content: [{ type: "text", text: `Could not find core_id "${core_id}".` }] };
+        return { content: [{ type: "text", text: 'Could not find core_id "' + core_id + '".' }] };
       }
       selectedId = core.id;
       render();
-      logAgentEvent(`Agent loaded context for "${core.name}"`);
+      logAgentEvent('Agent loaded accumulated context for "' + core.name + '"');
+      const nextSteps = getOpenNextSteps(core);
       return {
-        content: [
-          {
-            type: "text",
-            text:
-              `Name: ${core.name}\nStatus: ${core.status}\n` +
-              `Decisions:\n${core.decisions.map((d) => "- " + d).join("\n")}\n` +
-              `Current next action: ${core.nextAction}`
-          }
-        ]
+        content: [{
+          type: "text",
+          text:
+            "Name: " + core.name + "\nCurrent state: " + core.status + "\n\n" +
+            "Context records (chronological):\n" + contextRecordsForTool(core) + "\n\n" +
+            "Confirmed decisions:\n" +
+              core.decisions.map((decision) => "- " + decision).join("\n") + "\n\n" +
+            "Open next steps (" + nextSteps.length + "):\n" +
+              nextSteps.map((step, index) => (index + 1) + ". " + step.text).join("\n")
+        }]
       };
     }
   });
@@ -143,29 +272,63 @@ async function registerWebMcpTools() {
   await document.modelContext.registerTool({
     name: "confirm_next_action",
     description:
-      "Reflect a user-approved next action onto a Core. " +
-      "TRACE's principle: the agent never decides the next action on its own — always propose it " +
-      "to the user first, and only call this tool with what the user has approved.",
+      "Append one user-approved next action to a Core without overwriting existing open steps. " +
+      "TRACE's principle: the agent never decides or saves a next action on its own. Propose it first, " +
+      "then call this tool only with the exact action the user approved.",
     inputSchema: {
       type: "object",
       properties: {
         core_id: { type: "string", description: "Target Core id" },
-        next_action: { type: "string", description: "The next-action text the user approved" }
+        next_action: { type: "string", description: "The exact next-action text the user approved" }
       },
       required: ["core_id", "next_action"]
     },
     async execute({ core_id, next_action }) {
-      const core = cores.find((c) => c.id === core_id);
+      const core = cores.find((candidate) => candidate.id === core_id);
       if (!core) {
-        return { content: [{ type: "text", text: `Could not find core_id "${core_id}".` }] };
+        return { content: [{ type: "text", text: 'Could not find core_id "' + core_id + '".' }] };
       }
-      core.nextAction = String(next_action);
+
+      const approvedText = String(next_action ?? "").trim();
+      if (!approvedText) {
+        logAgentEvent('Rejected a blank next action for "' + core.name + '" — nothing saved');
+        return { content: [{ type: "text", text: "Next action cannot be blank. Nothing was saved." }] };
+      }
+
+      const duplicate = getOpenNextSteps(core).find((step) =>
+        actionsAreSimilar(step.text, approvedText)
+      );
+      if (duplicate) {
+        logAgentEvent('Skipped a duplicate next action for "' + core.name + '" — nothing saved');
+        return {
+          content: [{
+            type: "text",
+            text: 'Not added: a matching open next step already exists — "' + duplicate.text + '".'
+          }]
+        };
+      }
+
+      core.nextSteps.push({
+        id: makeStepId(core.id),
+        text: approvedText,
+        done: false,
+        createdAt: new Date().toISOString(),
+        source: "user-approved"
+      });
       saveCores(cores);
       selectedId = core.id;
       render();
-      logAgentEvent(`Agent updated the next action for "${core.name}" → "${next_action}"`);
+      logAgentEvent(
+        'Agent added a user-approved next step for "' + core.name + '" → "' + approvedText + '"'
+      );
       return {
-        content: [{ type: "text", text: `Updated next action for "${core.name}": ${next_action}` }]
+        content: [{
+          type: "text",
+          text:
+            'Added approved next step for "' + core.name + '": ' + approvedText + "\n" +
+            "Open next steps: " + getOpenNextSteps(core).length +
+            ". Saved in this browser's local demo state."
+        }]
       };
     }
   });
@@ -176,9 +339,9 @@ async function registerWebMcpTools() {
 document.getElementById("reset-demo-btn").addEventListener("click", () => {
   resetCores();
   cores = loadCores();
-  selectedId = cores[0]?.id ?? null;
+  selectedId = cores.find((core) => core.id === "cafe-2026")?.id ?? cores[0]?.id ?? null;
   render();
-  logAgentEvent("Demo data reset to initial state");
+  logAgentEvent("Demo reset: fictional seed data restored in this browser");
 });
 
 render();
